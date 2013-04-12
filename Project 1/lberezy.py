@@ -1,7 +1,7 @@
 def kinda_fermat(a,b,c):
-    '''Attempts to validate (non-exhaustively) Fermat's last theorem...kinda_
+    """Attempts to validate (non-exhaustively) Fermat's last theorem...kinda_
     Trys exponents from 2 to 10 for Fermat equality given a,b,c. Returns the
-    exponent if the equality holds, otherwise returns False.'''
+    exponent if the equality holds, otherwise returns False."""
 
     for n in range (2,11):
         if(a**n+b**n==c**n):
@@ -9,15 +9,15 @@ def kinda_fermat(a,b,c):
     return False
 
 def strip_punc(word):
-    '''Function used to strip given set of punctuation from right of word'''
+    """Function used to strip given set of punctuation from right of word"""
 
     punc = """,.:;!?'"-"""      #punctuation to strip (as per requirement)
     return word.rstrip(punc)    #strip punc from right until alphabet character
 
     
 def unique_long_words(text,wordlen):
-    '''Returns the count of unique words in
-    string that are greater than or equal to wordlen.'''
+    """Returns the count of unique words in
+    string that are greater than or equal to wordlen."""
 
     #makes each word in text lowercase and strips punctuation
     #then stores each unique word as a unique element of a set.
@@ -29,14 +29,14 @@ def unique_long_words(text,wordlen):
     return count
 
 def is_symmetric(word):
-    '''returs word if word is symmetric else returns false'''
+    """returs word if word is symmetric else returns false"""
     for i in range(len(word)/2+1):
         #if(not(word[i]==alphabet[i] && word[::-])): #extend this function
 
 def symmetric_words(text):
-    '''Returns sorted list of symmetric words from given text. A symmetric
+    """Returns sorted list of symmetric words from given text. A symmetric
     word is one in which the outermost letter pairs are equidistant across
-    the alphabet.'''
+    the alphabet."""
 
     #makes each word in text lowercase and strips punctuation
     #then stores each unique word as a unique element of a set.
@@ -51,8 +51,8 @@ def symmetric_words(text):
 
 
 def least_vowel_words(text):
-    '''Returns sorted list whose elements satisfy the condition of having
-    the lowest vowel proportion of all the words in the given text.'''
+    """Returns sorted list whose elements satisfy the condition of having
+    the lowest vowel proportion of all the words in the given text."""
 
     #makes each word in text lowercase and strips punctuation
     #then stores each unique word as a unique element of a set.
