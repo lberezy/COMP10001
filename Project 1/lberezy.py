@@ -24,8 +24,8 @@ def unique_long_words(text,wordlen):
     # then stores each unique word as a unique element of a set.
     words = set(strip_punc(word.lower()) for word in (text.split()))
     count = 0
-    for i in words:             # check each word
-        if(len(i)>=wordlen):    # if >= wordlen, increment total count
+    for i in words:
+        if(len(i)>=wordlen):
             count+=1
     return count
 
@@ -43,8 +43,10 @@ def symmetric_words(text):
         """returns word if word is symmetric else returns false"""
         from string import ascii_lowercase as myalphabet # grab ascii alphabet
         word_reverse = word[::-1]
+        # iterate over each letter in word up to half way point
         for i in range(0,len(word)/2):
-            # check
+            # returns false if symmetric property doesn't hold
+            # note the +1 and len() hackishness to help with 0-index list
             if(not(myalphabet.find(word[i])+1) \
              == (len(myalphabet) - myalphabet.find(word_reverse[i]))):
                 return False
@@ -55,7 +57,7 @@ def symmetric_words(text):
     words_symmetric = []
     words = set(strip_punc(word.lower()) for word in (text.split()))
     if words == []:
-        return []
+        return []   # handle empty list early
     for word in words:
         if(is_symmetric(word)):
             words_symmetric.append(word)
@@ -80,11 +82,12 @@ def least_vowel_words(text):
     # makes each word in text lowercase and strips punctuation
     # then stores each unique word as a unique element of a set.
     words = [strip_punc(word.lower()) for word in text.split()]
-    #words = [word for word in words if word != '']
     words = filter(None,words) # filter out null strings
     if words == []:
-        return []
+        return []   # handle empty lists early
+    # calculate minimum vowel ratio for words in the list    
     min_ratio = min([vowel_ratio(word) for word in words])
+    # leave only lowest vowel ratio words
     result = \
     [word for word in words if vowel_ratio(word) == min_ratio]
     result.sort()
