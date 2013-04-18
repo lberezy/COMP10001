@@ -7,8 +7,9 @@ def kinda_fermat(a,b,c):
 
     for n in range (2,11):
         if(a**n+b**n==c**n):
-            return n        # function returns n if equality holds (smallest n) 
+            return n        # function returns smallest n if equality holds 
     return False
+
 
 def strip_punc(word):
     """Strips basic punctuation from right of string."""
@@ -23,12 +24,11 @@ def unique_long_words(text,wordlen):
     # makes each word in text lowercase and strips punctuation
     # then stores each unique word as a unique element of a set.
     words = set(strip_punc(word.lower()) for word in (text.split()))
-    count = 0
+    count = 0   # current count of words >= wordlen
     for i in words:
         if(len(i)>=wordlen):
             count+=1
     return count
-
 
 
 def symmetric_words(text):
@@ -38,11 +38,10 @@ def symmetric_words(text):
     equidistant across the alphabet.
     """
 
-
     def is_symmetric(word):
         """returns word if word is symmetric else returns false"""
         from string import ascii_lowercase as myalphabet # grab ascii alphabet
-        word_reverse = word[::-1]
+        word_reverse = word[::-1]       # a reversed copy will come in handy
         # iterate over each letter in word up to half way point
         for i in range(0,len(word)/2):
             # returns false if symmetric property doesn't hold
@@ -54,7 +53,7 @@ def symmetric_words(text):
 
     # makes each word in text lowercase and strips punctuation
     # then stores each unique word as a unique element of a set.
-    words_symmetric = []
+    words_symmetric = []       # where the words will be put
     words = set(strip_punc(word.lower()) for word in (text.split()))
     if words == []:
         return []   # handle empty list early
@@ -73,10 +72,14 @@ def least_vowel_words(text):
     but computing power is cheap.
     """
 
-
     def vowel_ratio(word):
         '''Calculates vowel ('aeiou') ratio of string as float.'''
-        vowels = 'aeiou'
+
+        vowels = 'aeiou'    # check for English vowels
+                            # could import locale and do it that way...
+                            # don't trust IVLE enough
+        # sums the number of vowels in the word, divides by len(word)
+        # division by zero (should be) already handled by this stage
         return sum(word.count(x) for x in vowels)/float(len(word))
 
     # makes each word in text lowercase and strips punctuation
