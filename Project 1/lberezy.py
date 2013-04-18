@@ -29,6 +29,10 @@ def unique_long_words(text,wordlen):
         if(len(i)>=wordlen):
             count+=1
     return count
+    # or in one line for those interested:
+    #def func(text,wordlen):return len(filter(lambda x: len(x)>=wordlen,\
+    #set(word.lower().rstrip(""",.:;!?'"-""") for word in text.split())))
+    # and there's probably a more concise way too, but I don't know python well
 
 
 def symmetric_words(text):
