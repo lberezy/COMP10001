@@ -26,7 +26,8 @@ test_cases = {"kinda_fermat":
               "least_vowel_words":
                   [('submission.least_vowel_words("Eighty Megs And Constantly Swapping?")',["constantly"]),
                    ('submission.least_vowel_words("qwerty dvorak colemak workman")',["qwerty"]),
-                   ('submission.least_vowel_words("GNU - A new fragrance by RMS")',['by', 'rms']),
+                   ('submission.least_vowel_words("rhythm fly")',['fly', 'rhythm']),
+                   ('submission.least_vowel_words("GNU - A new fragrance by RMS")',['by', 'rms']), # no vowels
                    ('submission.least_vowel_words("")',[]), # test empty string
                    ('submission.least_vowel_words(",.:;!?- word,.:;!?-")',["word"]), # punctuation test
                    ('submission.least_vowel_words("The quality of mercy is not strain\'d ... Percy.")',["mercy","percy"])], # just testing 
