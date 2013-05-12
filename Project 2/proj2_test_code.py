@@ -5,6 +5,7 @@
 #
 # Date: 5/5/13
 #
+# Modified 9/5/13 to add handling of None as return value from function
 #
 # THERE SHOULD BE NO NEED TO MODIFY THIS CODE IN ANY WAY; THE ORIGINAL
 # VERSION OF THE CODE WILL BE USED FOR TESTING, AND ANY LOCAL CHANGES YOU
@@ -115,7 +116,11 @@ def test_equal(a,b):
     if type(a) != type(b):
         return False
     
-   # ints and strs must be identical in value
+    if (a is None and b is None):
+        return True
+
+
+    # ints and strs must be identical in value
     if (type(a) == int == type(b)) or (type(a) == str == type(b)) or (type(a) == bool == type(b)):
         return a == b
     

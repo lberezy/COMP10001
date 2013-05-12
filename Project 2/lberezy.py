@@ -10,7 +10,7 @@
 # oh look, a great big pile of imports. this is going to be fun...
 import matplotlib
 matplotlib.use('Svg')
-from pylab import *
+from pylab import * # because using python like matlab is awlways fun
 import cPickle as pickle
 import csv
 from collections import defaultdict
@@ -35,7 +35,8 @@ def make_index(datafile, picklefile):
     the other freq/total values in that dictionary or total documents in
     collection. videoURL is a composition of videoID and start time.'''
 
-    data = csv.reader(open(datafile, "rb"))
+    csv_file = open(datafile, "rb")
+    data = csv.reader(csv_file)
     
     first_dict  = {}
     second_dict = defaultdict(int)  # for incrementing
@@ -53,7 +54,9 @@ def make_index(datafile, picklefile):
         for word in words:    # for first_dict
             first_dict[videoURL][word] += 1 # fill {word: freq} dict.
             first_dict[videoURL]['__TOTAL__'] += 1
-            
+    csv_file.close()
+
+    # kinda slow, but I'm tired and lazy
     for document in first_dict:
         for word in first_dict[document]:
             if word == '__TOTAL__':
@@ -88,20 +91,26 @@ def strip_punct(word):
 
 def word_freq_graph(index_fname,graph_fname,word):
     '''Generates a histogram of a given word's frequency in index_fname'''
+    
+    picklefile = open(index_fname, "rb")
+    tf = pickle.load(picklefile)
+    picklefile.close()
 
-    tf = pickle.load(open(index_fname, "rb"))
     word = strip_punct(word)
     # return a list containing frequency of word found in description for
     # each document only if frequency > 0.
-    x = [tf[doc][word] for doc in tf.keys() if tf[doc][word] > 0]
-    if x == []:   # handle word-not-found
-        return None
+    x = [tf[doc][word] for doc in tf]
+    #if x == []:   # handle word-not-found
+    #    return None
     # matplotlib stuff - plot, label and save
-    hist(x, bins = len(x))
-    title('Histogram of word frequencies in video description')
-    xlabel('Frequency of word in descriptions for a given video')
+    yscale('log')   
+    xlim(0, max(x)+1) #FIX THIS
+    hist(x, bins = max(x)+1)
+    title('Histogram of "{}" frequencies in video description'.format(word))
+    xlabel('Frequency of "{}" in descriptions for a given video'.format(word))
     ylabel('Number of videos')
     savefig(graph_fname)    # does savefig do its own file opening/closing?
+    return
 
 
 def single_word_search(index_fname,word):
@@ -115,7 +124,9 @@ def single_word_search(index_fname,word):
 
         return f_dt/float(f_d)
 
-    tf = pickle.load(open(index_fname, "rb")) # load 1st dictionary from pickle
+    picklefile = open(index_fname, "rb")
+    tf = pickle.load(picklefile)    # load first dictionary from pickle
+    picklefile.close()
 
     results = []
     word = strip_punct(word)
@@ -196,8 +207,38 @@ def search(index_fname,query):
     return results
 
 def rr(query,doc_ranking,qrels):
+    ''' Given a query string, a ranked list of documents and a query-relation
+    file, returns the reciprocal-rank of a the ranked list of documents.'''
 
-    return float
+    qrels_file = open(qrels, "rb")
+    qrels_csv = csv.reader(qrels_file)
+    
+
+    qrels_dict = defaultdict(list)
+
+    # build dictionary of lists for each query string in qrel file
+    for line in qrels_csv:
+        q_string = line[0]
+        videoID = line[1]
+        start_time = line[2]
+        videoURL = make_videoURL(videoID, start_time)
+        qrels_dict[q_string].append(videoURL) # should preserve ordering
+    qrels_file.close()
+
+    result = 0
+    for doc in doc_ranking:
+        if query not in qrels_dict: # return 0.0 if query not found
+            break
+        if doc in qrels_dict[query]: # qrel match found!
+            result += 1
+            break
+        result += 1 # increment the rank and keep searching
+
+    if result > 0:
+        return float(1)/result
+    return 0    # test harness doesn't like 0.0
 
 def batch_evaluate(index_fname, queries, qreal, output_fname):
+    ''' Generates a/an HTML page
+
     return
