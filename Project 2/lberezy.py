@@ -1,7 +1,10 @@
 #   Project 2 for COMP10001
 #   Author: Lucas Berezy - 588236
 #
-#   Content based video search system.
+#   Content based video search and statistics 'system'.
+#
+#   The spec and test cases being updated every 5 minutes before the due date
+#   made this project extra fun.
 
 
 # oh look, a great big pile of imports. this is going to be fun...
@@ -15,6 +18,8 @@ from operator import itemgetter
 import math
 
 def make_index(datafile, picklefile):
+
+
     '''Takes a datafile containing video descriptions 'pickles' two 
     dictionaries to be stored in picklefile.
 
@@ -22,51 +27,46 @@ def make_index(datafile, picklefile):
         description is a dictionary of the words and their integer frequencies.
         i.e.    {'videoURL': {'word': freq, __TOTAL__: total_freq}
 
-    2.  Dictionary of words with value as total occurance of word in
-        description of all videos.
-        i.e.    {'word': total_occurance, __TOTAL__: total_in_all_videos}
-####UPDATE ME####
-    Each dictionary contains a __TOTAL__ entry containing the sum total of
-    the other freq/total values in that dictionary. videoURL is a composition
-    of videoID and start time'''
+    2.  Dictionary of words with value as total number of videos containing
+        word in description.
+        i.e.    {'word': total_occurance, __TOTAL__: total_docs_in_collection}
 
-    data = csv.reader(open(datafile,"rb"))
+    Each dictionary contains a __TOTAL__ entry containing the sum total of
+    the other freq/total values in that dictionary or total documents in
+    collection. videoURL is a composition of videoID and start time.'''
+
+    data = csv.reader(open(datafile, "rb"))
     
     first_dict  = {}
     second_dict = defaultdict(int)  # for incrementing
-    seen = {}   # to mark off 'seen' documents
 
     for line in data:
         videoID     = line[0]   # video ID is first element
         start_time  = line[1]   # start time is second element
         description = line[-1]  # description text is last element
         videoURL    = make_videoURL(videoID, start_time)    # compose videoURL
-
-        if videoURL not in first_dict.keys():   # set up a new sub-dict for new
+        words       = [strip_punct(word) for word in description.split()]
+        
+        if videoURL not in first_dict:   # set up a new sub-dict for new doc
             first_dict[videoURL] = defaultdict(int)
 
-        if videoURL not in seen.keys():    # number of documents containing word
-            for word in set(description.split()):
-                word = strip_punct(word)
-                second_dict[word] += 1
-
-        for word in description.split():    # word frequencies 
-            total = 0   # total word frequency
-            word = strip_punct(word)
-            # not super efficient, but eh      
+        for word in words:    # for first_dict
             first_dict[videoURL][word] += 1 # fill {word: freq} dict.
-        # and store once to avoid hashing every time
-        first_dict[videoURL]['__TOTAL__']
-        seen[videoURL] = 1   # mark document as seen
-
-    second_dict['__TOTAL__'] = sum(second_dict.values())
+            first_dict[videoURL]['__TOTAL__'] += 1
+            
+    for document in first_dict:
+        for word in first_dict[document]:
+            if word == '__TOTAL__':
+                continue
+            second_dict[word] += 1
+        second_dict['__TOTAL__'] += 1
 
     # write out picklefile
-    output = open(picklefile,"wb")
-    pickle.dump(first_dict,output)
-    pickle.dump(second_dict,output)
+    output = open(picklefile, "wb")
+    pickle.dump(first_dict, output)
+    pickle.dump(second_dict, output)
     output.close()
-    return second_dict
+    return
 
 #def word_frequency(word, word_string):
 #   '''Returns the integer number of occurances of a word in a split string.'''
@@ -75,11 +75,13 @@ def make_index(datafile, picklefile):
 def make_videoURL(videoID, start_time, \
     baseURL  = 'http://www.youtube.com/watch?v='):
     '''Composes videoID and start time into videoURL. Default: youtube.'''
+
     return '{}{}#t={}s'.format(str(baseURL),str(videoID), str(start_time))
 
 def strip_punct(word):
     '''Returns word with punctuation (',.:;!?-'"()[]{}') stripped from
     left and right of word, retaining any punctuation in the middle.'''
+
     __PUNCT__ = ''',.:;!?-'"()[]{}'''
     return word.lower().rstrip(__PUNCT__).lstrip(__PUNCT__)
 
@@ -87,7 +89,7 @@ def strip_punct(word):
 def word_freq_graph(index_fname,graph_fname,word):
     '''Generates a histogram of a given word's frequency in index_fname'''
 
-    tf = pickle.load(open(index_fname))
+    tf = pickle.load(open(index_fname, "rb"))
     word = strip_punct(word)
     # return a list containing frequency of word found in description for
     # each document only if frequency > 0.
@@ -110,9 +112,10 @@ def single_word_search(index_fname,word):
 
     def score(f_dt, f_d):
         '''Frequency of term in document/total words in document.'''
+
         return f_dt/float(f_d)
 
-    tf = pickle.load(open(index_fname)) # load in first dictionary from pickle
+    tf = pickle.load(open(index_fname, "rb")) # load 1st dictionary from pickle
 
     results = []
     word = strip_punct(word)
@@ -144,35 +147,39 @@ def search(index_fname,query):
 
     def calc_wdt(word):
         '''Calculates relevance score (w_dt) for a term as per the 
-        specification. On that, tf
+        specification. On that, tf and df
         can be accessed due to the scope of this function declaration without
         supplying it as a function argument, but that just gets confusing.'''
-### fix '''
+
         result = 0
         if word in tf[document]:
             f_dt = tf[document][word]   # frequency of word in document
             f_d  = tf[document]['__TOTAL__']    # total freq. of words in doc
             # number of documents in collection containing word
-            # iterate over each document in tf and 
-            f_t  = sum(1 for doc in tf if str(word) in tf[doc])
-            result = float(f_dt)/f_d*math.log(float(N)/(f_t+1))
+            # go go last minute spec changes, making my life easier and stuff!
+            #f_t  = sum(1 for doc in tf if str(word) in tf[doc])
+            f_t  = df[word]
+            result = float(f_dt) / f_d * math.log(float(N) / (f_t + 1))
         return result
 
-    tf = pickle.load(open(index_fname)) # 1st dictionary (with sub-dicts)
+    pickle_file =  open(index_fname, "rb")
+    tf = pickle.load(pickle_file)   # 1st dictionary (with sub-dicts)
+    df = pickle.load(pickle_file)   # 2nd dictionary
+    pickle_file.close()
+
     query_words = [strip_punct(x) for x in query.split()]
-    results = []
-    
-    #fail if there are no applicable query words
+    results = []    # sorted list of 0 videoURLs
+
+    # if there are no applicable query words
     if len(query_words) == 0:
-        return []   # a list of no videos, ranked by no rank (or None? idk)
-    
+        return results  # a list of no videos, ranked by no rank
+
     # total number of documents in collection minus __TOTAL__ entry
-    N = len(tf.keys()) - 1
-    print query_words
+    N = df['__TOTAL__']
     for document in tf: # compute the document score
-        # compute sum of relevance score for each term query
+        # sum of relevance score for each term in query
         sum_wdt = sum(calc_wdt(word) for word in query_words)
-        # same thing, but summing the squares (there has to be a cleaner way..)
+        # sum squares of relevance values
         sum_square_wdt = \
         sum(calc_wdt(word)**2 for word in query_words)
         if sum_wdt > 0:
