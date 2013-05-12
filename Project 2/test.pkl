@@ -10,7 +10,7 @@ p4
 tRp5
 S'__TOTAL__'
 p6
-I1
+I0
 sS'bird'
 p7
 I1
@@ -20,7 +20,7 @@ g3
 (g4
 tRp9
 g6
-I1
+I0
 sS'bird'
 p10
 I1
