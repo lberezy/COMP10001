@@ -7,7 +7,6 @@
 #   made this project extra fun.
 
 
-# oh look, a great big pile of imports. this is going to be fun...
 import matplotlib
 matplotlib.use('Svg')
 from pylab import * # because using python like matlab is awlways fun
@@ -239,6 +238,55 @@ def rr(query,doc_ranking,qrels):
     return 0    # test harness doesn't like 0.0
 
 def batch_evaluate(index_fname, queries, qreal, output_fname):
-    ''' Generates a/an HTML page
+    ''' Generates a/an HTML page containing a table of (query, number of 
+        results returned, reciprocal-rank (and mean)), a bar graph of the
+        reciprocal-rank for each query and a bar graph of mean-reciprocal-rank
+        for queries of different length.'''
+    def html_document(body, title = ''):
+        '''Returns an html template string and inserts body/title into it.'''
+        
+        DOC_TEMPLATE =   """<!DOCTYPE html>
+        <html>
+        <head><title>{title}</title></head>
+        <body>{body}</body>
+        </html>"""
+        return DOC_TEMPLATE.format(title = str(title), body = str(body))
 
+    def html_row(entries):
+        '''Returns html table row given list of column entries.'''
+        assert type(entries) == list
+        output = '<tr>\n'
+        for item in entries
+            output.append('<td>{item}</td>'.format(item = item))
+        output.append('\n</tr>')   
+
+    queries = [strip_punct(query) for query in queries]
+    reciprocal_ranks = [] # tally RRs for averaging
+    body = """<table>\n     \t<tr color="grey">\n     \t\t<th>Query</th>\n     \t\t<th>No. Results</th>\n     \t\t<th>Reciprocal Rank</th>\n     \t\t<th></th>
+    \t<tr color="grey">\n     \t\t<th>Query</th>\n     \t\t<th>No. Results</th>\n     \t\t<th>Reciprocal Rank</th>\n     \t\t<th></th>
+    \t\t<th>Query</th>\n     \t\t<th>No. Results</th>\n     \t\t<th>Reciprocal Rank</th>\n     \t\t<th></th>
+    \t\t<th>No. Results</th>\n     \t\t<th>Reciprocal Rank</th>\n     \t\t<th></th>
+    \t\t<th>Reciprocal Rank</th>\n     \t\t<th></th>
+    \t\t<th></th>
+    \t</tr>"""   # compose html body as string concatenation
+
+    #now to add the rows to the table
+    for query in queries:
+        results = search(index_fname, query)
+        num_results = len(results)
+        rr = rr(query, results, qrel)
+        reciprocal_ranks.append(rr)
+        html_row = 
+        body.append
+    #add the final row with mean RR and close table
+
+    # add in bar plot of RR for each query
+
+
+
+
+
+    html_file = open(output_fname,"wb")
+    html_file.write(html_document(body, "batch_evaluate results")) # i'm boring
+    html_file.close() 
     return
