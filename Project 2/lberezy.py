@@ -102,9 +102,11 @@ def word_freq_graph(index_fname,graph_fname,word):
     #if x == []:   # handle word-not-found
     #    return None
     # matplotlib stuff - plot, label and save
-    yscale('log')   
-    xlim(0, max(x)+1) #FIX THIS
+    clf()
     hist(x, bins = max(x)+1)
+    yscale('log')
+    ylim(0,)   
+    xlim(0, max(x)+1) #FIX THIS
     title('Histogram of "{}" frequencies in video description'.format(word))
     xlabel('Frequency of "{}" in descriptions for a given video'.format(word))
     ylabel('Number of videos')
@@ -237,54 +239,97 @@ def rr(query,doc_ranking,qrels):
         return float(1)/result
     return 0    # test harness doesn't like 0.0
 
-def batch_evaluate(index_fname, queries, qreal, output_fname):
+def batch_evaluate(index_fname, queries, qrel, output_fname, bar_width = 0.5):
     ''' Generates a/an HTML page containing a table of (query, number of 
         results returned, reciprocal-rank (and mean)), a bar graph of the
         reciprocal-rank for each query and a bar graph of mean-reciprocal-rank
         for queries of different length.'''
+
+
     def html_document(body, title = ''):
         '''Returns an html template string and inserts body/title into it.'''
         
-        DOC_TEMPLATE =   """<!DOCTYPE html>
-        <html>
-        <head><title>{title}</title></head>
-        <body>{body}</body>
-        </html>"""
+        DOC_TEMPLATE =  ("<!DOCTYPE html>\n<html>\n\t<head><title>{title}"
+                        "</title></head>\n\t\t<body>\n\t\t\t{body}\n\t\t"
+                        "</body>\n</html>")
         return DOC_TEMPLATE.format(title = str(title), body = str(body))
 
     def html_row(entries):
         '''Returns html table row given list of column entries.'''
         assert type(entries) == list
         output = '<tr>\n'
-        for item in entries
-            output.append('<td>{item}</td>'.format(item = item))
-        output.append('\n</tr>')   
+        for item in entries:
+            output += ('<td>{item}</td>'.format(item = item))
+        output += ('\n</tr>')
+        return output   
+
 
     queries = [strip_punct(query) for query in queries]
-    reciprocal_ranks = [] # tally RRs for averaging
-    body = """<table>\n     \t<tr color="grey">\n     \t\t<th>Query</th>\n     \t\t<th>No. Results</th>\n     \t\t<th>Reciprocal Rank</th>\n     \t\t<th></th>
-    \t<tr color="grey">\n     \t\t<th>Query</th>\n     \t\t<th>No. Results</th>\n     \t\t<th>Reciprocal Rank</th>\n     \t\t<th></th>
-    \t\t<th>Query</th>\n     \t\t<th>No. Results</th>\n     \t\t<th>Reciprocal Rank</th>\n     \t\t<th></th>
-    \t\t<th>No. Results</th>\n     \t\t<th>Reciprocal Rank</th>\n     \t\t<th></th>
-    \t\t<th>Reciprocal Rank</th>\n     \t\t<th></th>
-    \t\t<th></th>
-    \t</tr>"""   # compose html body as string concatenation
+    reciprocal_ranks = [] # tally RRs for averaging and graphing
+
+    # compose html body as string concatenation
+    body = ("""<table border = "1"><tr bgcolor="grey"><th>Query</th>"""
+            """<th>No. Results</th><th>Reciprocal Rank</th>"""
+            """<th>Mean Reciprocal Rank</th></tr>""")
 
     #now to add the rows to the table
     for query in queries:
         results = search(index_fname, query)
         num_results = len(results)
-        rr = rr(query, results, qrel)
-        reciprocal_ranks.append(rr)
-        html_row = 
-        body.append
+        rrank = rr(query, results, qrel)
+        reciprocal_ranks.append(rrank)
+        body += html_row(list([query, num_results, rrank])) 
+    
     #add the final row with mean RR and close table
-
+    MRR=sum(reciprocal_ranks)/float(len(reciprocal_ranks))
+    body += ("""<tr><td></td><td></td><td>"""
+            """</td><td>{0:.4f}</td></tr></table>""").format(round(MRR,4))
+    
     # add in bar plot of RR for each query
+    
+    clf()
+    bar_locations = range(len(queries))
+    bar(bar_locations, reciprocal_ranks, width = bar_width)
+    xlim(0-bar_width, len(reciprocal_ranks))
+    xticks([x + bar_width/2 for x in bar_locations], queries)
+    title('Reciprocal Rank for each query')
+    xlabel('Queries')
+####    xticks()#label names
+    ylabel('Reciprocal Rank')
+    savefig('lberezy-rr.svg')
+
+    body += '<img src="lberezy-rr.svg" alt="reciprocal rank plot"></img>'
 
 
+    # add in bar plot to plot MRR for queries of different length.
+    # i've assumed length refers to the number of words in the 
+    # query string. excuse the following mess.
 
+    # make a dictionary of lists comprising {wordlength: [RR, RR, RR]}
+    mrr_dict = defaultdict(list)
+    for item in zip([len(q.split()) for q in queries], reciprocal_ranks):
+        mrr_dict[item[0]].append(item[1])
+    # convert to {wordlength: mean reciprocal rank}
+    for x in mrr_dict:
+        mrr_dict[x] = (sum(mrr_dict[x]))/float(len(mrr_dict[x]))
+    # create an ordered list of wordlengths (from dict keys)
+    wordlengths = sorted(mrr_dict)
+    # and then corresponding MRR values in another list (in order) (dict vals)
+    MRR_values = [mrr_dict[x] for x in wordlengths]
 
+    # begin plotting!
+    clf()
+    bar(wordlengths, MRR_values, width = bar_width)
+    xlim(0-bar_width, max(wordlengths))
+    labels = map(str,range(1, max(wordlengths) + 1))
+    bar_locations = (range(1,max(wordlengths) + 1))
+    xticks([x + bar_width/2 for x in bar_locations], labels)
+    title('Mean Reciprocal Rank for query length')
+    xlabel('Query length')
+    ylabel('Mean Reciprocal Rank')
+    savefig('lberezy-mrr.svg')
+
+    body += '<img src="lberezy-mrr.svg" alt="mean reciprocal rank plot"></img>'
 
     html_file = open(output_fname,"wb")
     html_file.write(html_document(body, "batch_evaluate results")) # i'm boring
