@@ -15,7 +15,7 @@ import cPickle as pickle
 import csv
 from collections import defaultdict
 from operator import itemgetter
-import math
+from math import sqrt, log, log10, ceil
 
 def make_index(datafile, picklefile):
 
@@ -46,7 +46,8 @@ def make_index(datafile, picklefile):
         start_time  = line[1]   # start time is second element
         description = line[-1]  # description text is last element
         videoURL    = make_videoURL(videoID, start_time)    # compose videoURL
-        words       = [strip_punct(word) for word in description.split()]
+        words       = [strip_punct(word) for word in description.split()\
+                        if strip_punct(word) != '']
         
         if videoURL not in first_dict:   # set up a new sub-dict for new doc
             first_dict[videoURL] = defaultdict(int)
@@ -100,20 +101,28 @@ def word_freq_graph(index_fname,graph_fname,word):
     # return a list containing frequency of word found in description for
     # each document only if frequency > 0.
     x = [tf[doc][word] for doc in tf if word != '__TOTAL__']
-    #if x == []:   # handle word-not-found
-    #    return None
-    # matplotlib stuff - plot, label and save
+
+
+    # matplotlib stuff - plot, label, get mad at matplotlib syntax and save
     # I don't really know what I'm doing here.
     clf()
     bar_width = 0.5
     hist(x, bins = max(x)+1, log=True, facecolor = "green",\
          histtype ="bar")
     #yscale('log')
-    #ylim(0, len(x))   
+    #ylim(-1, len(tf))   
     xlim(0-bar_width, max(x)+bar_width)
-    # i give up on trying to fit the axis ticks, defaults it is...
+    # i give up on trying to fit the axis ticks, so defaults it is...
     #xticks([i + bar_width for i in range(0,max(x)+1,5)], \
     #    [str(i) for i in range(0,max(x)+1,5)])
+    # additionally, I'd like to make the y-axis have a minimum of always 0,
+    # but a range is always required and it causes issues with the log scale
+    # log(0) being undefined
+
+    # and now for more parenthesis than lisp... 
+    # (doing int(float + 1) is probably a better idea.)
+    yticks([10**i for i in range(0,int(ceil(log10(len(tf)))))],\
+        [str(10**i) for i in range(0,int(ceil(log10(len(tf)))))])
     title('Histogram of frequencies in video description (word: "{}")'\
         .format(word))
     xlabel('Frequency of "{}" in descriptions for a given video'.format(word))
@@ -223,7 +232,8 @@ def rr(query,doc_ranking,qrels):
     qrels_csv = csv.reader(qrels_file)
     
     #strip punct and rejoin as string
-    query = ' '.join([strip_punct(x) for x in query.split()])
+    query = ' '.join([strip_punct(x) for x in query.split()\
+     if strip_punct(x) != ''])
 
     qrels_dict = defaultdict(list)
     # build dictionary of lists for each query string in qrel file
@@ -285,7 +295,8 @@ def batch_evaluate(index_fname, queries, qrel, output_fname, bar_width = 0.5):
     #now to add the rows to the table
     for query in queries:
         #strip punct and rejoin as string
-        query = ' '.join([strip_punct(x) for x in query.split()])
+        query = ' '.join([strip_punct(x) for x in query.split()\
+        if strip_punct(x) != ''])
         # perform search to get ranked list
         results = search(index_fname, query)
         num_results = len(results)
@@ -298,8 +309,7 @@ def batch_evaluate(index_fname, queries, qrel, output_fname, bar_width = 0.5):
     
     #add the final row with mean RR and close table
     MRR=sum(reciprocal_ranks)/float(len(reciprocal_ranks))
-    body += ("""\t\t\t<tr><td></td><td></td><td>"""
-            """</td><td>{0:.4f}</td>"""
+    body += ("""\t\t\t<tr><td rowspan = "4">{0:.4f}</td>"""
             """</tr>\n\t\t</table>\n""").format(round(MRR,4))
     
     # add in bar plot of RR for each query
