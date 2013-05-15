@@ -2,15 +2,11 @@
 #   Author: Lucas Berezy - 588236
 #
 #   Content based video search and statistics 'system'.
-#
-#   The spec and test cases being updated every 5 minutes before the due date
-#   made this project extra fun.
 
 
 import matplotlib
 matplotlib.use('Svg')
 from pylab import * # because using python like matlab is awlways fun
-import numpy as np
 import cPickle as pickle
 import csv
 from collections import defaultdict
@@ -90,7 +86,7 @@ def strip_punct(word):
     return word.lower().rstrip(__PUNCT__).lstrip(__PUNCT__)
 
 
-def word_freq_graph(index_fname,graph_fname,word):
+def word_freq_graph(index_fname,graph_fname,word, bar_width = 0.5):
     '''Generates a histogram of a given word's frequency in index_fname'''
     
     picklefile = open(index_fname, "rb")
@@ -106,7 +102,6 @@ def word_freq_graph(index_fname,graph_fname,word):
     # matplotlib stuff - plot, label, get mad at matplotlib syntax and save
     # I don't really know what I'm doing here.
     clf()
-    bar_width = 0.5
     hist(x, bins = max(x)+1, log=True, facecolor = "green",\
          histtype ="bar")
     #yscale('log')
@@ -309,9 +304,10 @@ def batch_evaluate(index_fname, queries, qrel, output_fname, bar_width = 0.5):
     
     #add the final row with mean RR and close table
     MRR=sum(reciprocal_ranks)/float(len(reciprocal_ranks))
-    body += ("""\t\t\t<tr><td rowspan = "4">{0:.4f}</td>"""
-            """</tr>\n\t\t</table>\n""").format(round(MRR,4))
+    body += ("""\t\t\t<tr><td colspan = "3"><td>{0:.4f}</td>"""
+            """</td></tr>\n\t\t</table>\n""").format(round(MRR,4))
     
+    ###
     # add in bar plot of RR for each query
     
     clf()
@@ -319,14 +315,16 @@ def batch_evaluate(index_fname, queries, qrel, output_fname, bar_width = 0.5):
     bar(bar_locations, reciprocal_ranks, width = bar_width)
     xlim(0-bar_width, len(reciprocal_ranks))
     xticks([x + bar_width/2 for x in bar_locations], queries)
+    yticks([round(0.1*x,2) for x in range(0,11)],\
+    [str(round(0.1*x,2)) for x in range(0,11)]) 
     title('Reciprocal Rank for each query')
     xlabel('Queries')
     ylabel('Reciprocal Rank')
     savefig('lberezy-rr.svg')
 
-    body += '\t\t<img src="lberezy-rr.svg" alt="reciprocal rank plot">'
+    body += '\t\t<img src="lberezy-rr.svg" alt="reciprocal rank plot"><br />'
 
-
+    ###
     # add in bar plot to plot MRR for queries of different length.
     # i've assumed length refers to the number of words in the 
     # query string. excuse the following mess.
@@ -351,6 +349,8 @@ def batch_evaluate(index_fname, queries, qrel, output_fname, bar_width = 0.5):
     labels = wordlengths
     bar_locations = (range(1,len(wordlengths)+1))
     xticks([x + bar_width/2 for x in bar_locations], labels)
+    yticks([round(0.1*x,2) for x in range(0,11)],\
+        [str(round(0.1*x,2)) for x in range(0,11)])
 
     title('Mean Reciprocal Rank for query length')
     xlabel('Query length')
@@ -365,3 +365,63 @@ def batch_evaluate(index_fname, queries, qrel, output_fname, bar_width = 0.5):
     html_file.write(html_document(body, "batch_evaluate results")) # i'm boring
     html_file.close() 
     return
+
+### The following is not complete:
+def bonus(index_fname,transfile,query,max_nodes = 4):
+#     ''' Returns a list of videos ranked in decreasing order of
+#     relevance score after query expansion is performed on the query
+#     making use of the translations in transfile.'''
+
+#     # pickle_file = open(index_fname, "rb")
+#     # tf = pickle.load(pickle_file)
+#     # df = pickle.load(pickle_file)
+#     # pickle_file.close()
+
+#     csv_file = open(transfile, "rb")
+#     data = csv.reader(csv_file)
+
+#     trans_graph = defaultdict(lambda: defaultdict(dict))
+#     for line in data:
+#         from_lang = strip_punct(line[0])
+#         from_word = strip_punct(line[1])
+#         to_lang   = strip_punct(line[2])
+#         to_word   = strip_punct(line[3])
+#         trans_graph[from_lang][from_word][to_lang] = to_word
+#         trans_graph[to_lang][to_word][from_lang] = from_word
+
+#     # trans_simple = defaultdict(list)
+#     # for line in data:
+#     #     from_lang = strip_punct(line[0])
+#     #     from_word = strip_punct(line[1])
+#     #     to_lang   = strip_punct(line[2])
+#     #     to_word   = strip_punct(line[3])
+#     #     trans_simple[(from_word,from_lang)].append((to_word,to_lang))
+#     # csv_file.close()
+
+#     #queries = [strip_punct(word) for word in query]
+
+#     # for q in queries:
+#     #     nodes = []
+#     #     next_lang = 'english'
+#     #     next_word = q
+#     #     while len(nodes) <= max_nodes:
+
+#     #         next_word = trans_graph[]
+#     #         next_lang = trans_graph[] 
+
+#     # find paths from single source (graph['english'][word]) in undirected graph
+#     # to end vertext (graph['english'][other_word]) with total cost <= max_nodes
+     return []
+
+
+# def search(graph, from_l, from_w, goal_l='english', path =[]):
+#     ''' from_w = from_word, from_l = from_language. not complete'''
+#     path = path + [from_w]
+#     if not graph[from_l].has_key(from_w):
+#         return None
+#     for node in graph[from_l]:
+#         if node == goal_l:
+#             return graph[from_l][]
+#         if node not in path:
+#             new_path = search(graph,node,node.keys()[0],goal_l,path)
+#   return node
