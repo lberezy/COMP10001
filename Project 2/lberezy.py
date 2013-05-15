@@ -411,10 +411,13 @@ def bonus(index_fname,transfile,query,max_nodes = 4):
 
 #     # find paths from single source (graph['english'][word]) in undirected graph
 #     # to end vertext (graph['english'][other_word]) with total cost <= max_nodes
+      # should perhaps use a depth first search on each node in tree and call
+      # recusively on child nodes. meh, it's late and i'm tired.
      return []
 
 
 # def search(graph, from_l, from_w, goal_l='english', path =[]):
+#    this is all broken, and should be a depth first search anyway
 #     ''' from_w = from_word, from_l = from_language. not complete'''
 #     path = path + [from_w]
 #     if not graph[from_l].has_key(from_w):
@@ -424,4 +427,4 @@ def bonus(index_fname,transfile,query,max_nodes = 4):
 #             return graph[from_l][]
 #         if node not in path:
 #             new_path = search(graph,node,node.keys()[0],goal_l,path)
-#   return node
+#   return node    
