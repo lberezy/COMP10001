@@ -25,6 +25,7 @@ __ALLCARDS__ = map(''.join, itertools.product(__RANKS__,__SUITS__))
 def f_suit(suit):
     ''' returns an appropriate filter function based on the suit. For use
     in filter()., otherwise returns None '''
+
     if suit in __SUITS__:
         return lambda card: card[1] == suit
 
@@ -32,6 +33,7 @@ def f_suit(suit):
 def cards_to_suit(cards, sorted = True):
     ''' takes a list of cards, returns an optionally sorted dict of lists of
     each suit of cards (in rank order) '''
+
     suits = {}
     # create dictionary with 
     for suit in __SUITS__:
@@ -43,12 +45,14 @@ def cards_to_suit(cards, sorted = True):
 
 def have_suit(hand, suit):
     ''' checks to see if suit is in hand '''
+
     if len([card[1] for card in hand if card[1] == suit]):
         return True
     return False
 
 def have_any_cards(cards, hand):
     ''' Returns true if any card in list of cards is in hand '''
+
     assert type(cards)==list
     for card in cards:
         if card in hand:
@@ -57,6 +61,7 @@ def have_any_cards(cards, hand):
 
 def have_penalty(hand):
     ''' Returns true iff there is a Heart or QS in hand '''
+    
     if 'QS' in hand:
         return True
     if len(filter(f_hearts, hand)):
@@ -78,6 +83,7 @@ def pass_cards(hand):
     ''' Pases a 3, hopefully advantageous cards at the beginning of the round.
     Prioritises passing QKA of Spades, then the QS or 0D then if possible,
     voiding in a suit.'''
+
     def pick(card):
         ''' removes card from hand and places it in picked list '''
         to_pass.append(hand[card[1]].pop(hand[card[1]].index(card)))
@@ -142,6 +148,7 @@ def is_valid_play(played, hand, play, broken):
     ''' Determines if a given play is valid, based on current hand, played
     cards in current trick and if hearts are broken according to the rules
     in the spec. '''
+
     if play not in hand:    # no fun allowed
         return False
     if not play:    # must play something
@@ -168,20 +175,33 @@ def is_valid_play(played, hand, play, broken):
         return False
     return True
 
+
 def get_valid_plays(played, hand, broken, is_valid=is_valid_play):
     ''' returns a list of all valid plays that can be made from a hand given
     some play state variables. '''
+
     output = []
     for card in hand:
         if (is_valid(played, hand, card, broken)):
             output.append(card)
     return output
 
+
 def score_game(tricks_won):
     ''' scores each players list of tricks won and returns a tuple of players
     scores and a boolean regarding their winning status in a list, in order
     of the original ordering of lists in tricks_won. players may draw. '''
-    
+
+    def shot_moon(tricks):
+        ''' returns a boolean True if the player has captured every penalty
+        card including the QS. '''
+
+        tricks = list(itertools.chain(tricks))  # flatten list of lists
+        if len(filter(f_suit('H'),tricks)) == len(__RANK_ORDER__) \
+            and ('QS' in tricks):
+            return True
+        return False
+
     scores = []
     # construct a list of final scores for each player
     for tricklist in tricks_won:
@@ -193,10 +213,12 @@ def score_game(tricks_won):
         # if so, make them win. This score is a mutually exclusive outcome, so
         # there can now be only one winner.
         # probably not the 'right' way to calculate it
-
-        if score == 16: # final score 16 if captured 0D as well (26 - 10)
+            
+            # score == 16 if captured 0D as well (26 - 10)
+        if score == 16 and shot_moon(tricks):
+            # set the new score
             score = -36 # wew, magic numbers (-26 moon shoot + -10 for 0D)
-        if score == 26: 
+        if score == 26 and shot_moon(tricks): 
             score *= -1 # turn that frown upside down!
         scores.append(score)
 
@@ -204,6 +226,7 @@ def score_game(tricks_won):
     # where Boolean True represents _a_ winning player (i.e. is equal to the
     # minumum score.
     return [(score,(lambda x: x == min(scores))(score)) for score in scores]
+
 
 def score_trick(trick):
     ''' scores a trick based on the rules set out in the spec.
