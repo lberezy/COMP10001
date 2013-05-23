@@ -1,28 +1,45 @@
 # Project 3 - COMP10001
 # Author: Lucas Berezy
+#
+#   Hearts card game 'AI'.
+# I've never played Hearts before this, and it's still a little confusing to me
+# which means you get to laugh extra hard at some of the plays the AI may make.
 
 
 import itertools 
 
-# construct some card set constants
-__SUITS__     = set(['H','D','C','S']) # hearts, diamonds, clubs, spades
-__NUMBERS__ = set(str(i) for i in range(2, 10),0)
-__ROYALS__    = set(['J','Q','K','A'])
-__RANKS__     = __NUMBERS__.union(__ROYALS__)
+# construct some card set constants, might come in handy and set gymnastics is
+# fun.
+__SUITS__   = set(['H','D','C','S']) # hearts, diamonds, clubs, spades
+__NUMBERS__ = set([str(i) for i in range(2, 10)]).union(set(['0']))
+__ROYALS__  = set(['J','Q','K','A'])
+__RANKS__   = __NUMBERS__.union(__ROYALS__)
 __RANK_ORDER__ = \
     ['2', '3', '4', '5', '6', '7', '8', '9', '0', 'J', 'Q', 'K', 'A']
 __ALLCARDS__ = map(''.join, itertools.product(__RANKS__,__SUITS__))
 
 
+# filter functions, to make life easier... maybe. I wrote these before thinking
+# what i'd actually use them for.
 
-def f_hearts(hand):
-    return [card[1] for card in hand if card[1] == 'H']
-def f_diamonds(hand):
-    return [card[1] for card in hand if card[1] == 'D']
-def f_clubs(hand):
-    return [card[1] for card in hand if card[1] == 'C']
-def f_spades(hand):
-    return [card[1] for card in hand if card[1] == 'S']
+def f_suit(suit):
+    ''' returns an appropriate filter function based on the suit. For use
+    in filter()., otherwise returns None '''
+    if suit in __SUITS__:
+        return lambda card: card[1] == suit
+
+
+def cards_to_suit(cards, sorted = True):
+    ''' takes a list of cards, returns an optionally sorted dict of lists of
+    each suit of cards (in rank order) '''
+    suits = {}
+    # create dictionary with 
+    for suit in __SUITS__:
+        suits[suit] = [card for card in cards if f_suit(suit)(card)]
+    if sorted:
+        for suit in output:
+            output[suit].sort(key = lambda x: __RANK_ORDER__.index(x[0]))
+    return output
 
 def have_suit(hand, suit):
     ''' checks to see if suit is in hand '''
@@ -30,17 +47,38 @@ def have_suit(hand, suit):
         return True
     return False
 
+def have_any_cards(cards, hand):
+    ''' Returns true if any card in list of cards is in hand '''
+    assert type(cards)==list
+    for card in cards:
+        if card in hand:
+            return True
+    return False
+
+def have_penalty(hand):
+    ''' Returns true iff there is a Heart or QS in hand '''
+    if 'QS' in hand:
+        return True
+    if len(filter(f_hearts, hand)):
+        return True
+    return False
+
+def is_penalty(card):
+    if card == 'QS' or card[1] == 'H':
+        return True
+    return false
+
 
 #playing QS breaks hearts, QS treated like a heart
 
 # filter functions for H,D,C,S etc
 # have_suit() function
 # ducking function (highest card that doesn't win, but isn't 0D)
-def pass_cards(hand, pass_size = 3):
+def pass_cards(hand):
     ''' Pases a 3, hopefully advantageous cards at the beginning of the round.
     Prioritises passing QKA of Spades, then the QS or 0D then if possible,
     voiding in a suit.'''
-    def pick(card, hand, picked):
+    def pick(card):
         ''' removes card from hand and places it in picked list '''
         to_pass.append(hand[card[1]].pop(hand[card[1]].index(card)))
 
@@ -49,59 +87,132 @@ def pass_cards(hand, pass_size = 3):
     # from the dealt hand of cards
     #
     # Priorities:
-    # check if QS is in hand
-    #    Go void in a suit iff possible
-    #    
+    #   Rid self of A,K,Q of Spades
+    #   If have 0D, discard only if have A,K,Q of Diamonds
+    #   Try and go void in a suit, if it fits entirely into remaining pass
+    #   Try and go void in the shortest suit that's not hearts, starting with
+    #   the highest cards (that aren't A,K,Q of Diamonds if 0D was passed)
+    #   Avoid passing low spades
 
     # seriously avoid passing low spades
 
-    # QKA of Spades first, then go void
-
     to_pass = [] # 3 cards to pass
-    pass_count = 0 # number of cards chosen so far
-    hand_list = hand[::] # store backup of flat hand list
-    hand = cards_to_suit(hand) # sort into list of suits
+    ##hand = cards_to_suit(hand) # sort into list of suits
 
-    # check for 'interesting' cards
-    if 'QS' in filter(f_spades, hand): # not really necessary to filter
+    # Remove A,K,Q of Spades first
+    # don't really need to filter, but those functions were just sitting around
+    if 'AS' in filter(f_spades, hand) and len(to_pass) < 3:
         # pop the card from the hand into the to_pass list
-        to_pass.append(hand['S'].pop(hand['S'].index('QS')))
+        pick('AS')
+    if 'KS' in filter(f_spades, hand) and len(to_pass) < 3:
+        pick('KS')
+    if 'QS' in filter(f_spades, hand) and len(to_pass) < 3:
+        pick('QS')
 
-    if '0D' in filter(f_diamonds, hand):
-        # pop the card from the hand into the to_pass list
-        to_pass.append(hand['D'].pop(hand['D'].index('0D')))
+    # it's hard to capture this card when in hand, so give away unless you 
+    # don't have a card to capture it with (A,K,Q,J of Diamonds)
+    if '0D' in filter(f_diamonds, hand) \
+        and have_any_cards(['AD','KD','QD']) and len(to_pass) < 3:
+        pick('0D')
+        # set a flag so we know not to give these away later
+        keep_high_diamonds = True
 
-    # check if there are any suits to go void in and try to do so
-    for suit in __SUITS__:
-        suit = filter(filter_)
-        if len(suit) <= (pass_size - pass_count):
-            [to_pass.append(card) for card in suit]
+    # sort remaining suits by size
+### BUG HERE
+    sorted_suits = sorted([(len(x),x) for x in cards_to_suit(hand)])
+    print sorted_suits
+    sorted_suits = [x[1] for x in sorted_suits]
+    print sorted_suits
+    # pick off smallest suits that will fit entirely
 
-    # don't forget to check len(to_pass) == pass_size
+    #WARNING: infinite loop
+    #FIXME
+    for suit in sorted_suits:
+        # if the whole suit will fit in remaining pick
+        if len(suit) <= (3 - len(to_pass)):
+                print suit
+                [pick(card) for card in suit]
+
+        # don't forget to check len(to_pass) == pass_size
     return to_pass
 
-def cards_to_suit(cards, sorted = True):
-    ''' takes a list of cards, returns an optionally sorted dict of lists of
-    each suit of cards '''
-    hearts        = [x for x in cards if x[1] == 'H']
-    diamonds     = [x for x in cards if x[1] == 'D']
-    clubs         = [x for x in cards if x[1] == 'C']
-    spades         = [x for x in cards if x[1] == 'S']
-    output = {'H': hearts, 'D': diamonds, 'C': clubs, 'S': spades}
-    if sorted:
-        for suit in output:
-            output[suit].sort(key = lambda x: __RANK_ORDER__.index(x[0]))
-    return output
+
 
 def is_valid_play(played, hand, play, broken):
-    ''' sosjfgodijg '''
-     output = False
-     if play not in hand:    # no fun allowed
-         return False
+    ''' Determines if a given play is valid, based on current hand, played
+    cards in current trick and if hearts are broken according to the rules
+    in the spec. '''
+    if play not in hand:    # no fun allowed
+        return False
+    if not play:    # must play something
+        return False
 
-     if played == []:    # your lead
-         if not broken and (play[1] == 'H' or play == 'QS') and \
-         ( filter(have_suit(), )
-             return False
-         return True
+# leading
+# can lead anything 
+    if played == []:
+        # trying to lead penalty card when not broken and not forced to break
+        if not broken and (play[1] == 'H' or play == 'QS') and \
+         (have_suit(hand, 'D') or have_suit(hand, 'D')
+         or (filter(f_spades, hand) != ['QS'])):
+            return False
+        return True
 
+    lead_card = played[0]
+
+
+#NOT FINISHED
+#"         # must follow suit if card of that suit held" doesn't work
+#is_valid_play(['KH'], ['0D', '9S', '3S', '3D', '3H', '5D', 'AD', '6C', '7D', '6H', 'JH'],'JH',True)""",True
+    # not following suit when following is possible
+    if have_suit(hand, lead_card[1]) and play[1] != lead_card[1]:
+        return False
+    return True
+
+def get_valid_plays(played, hand, broken, is_valid=is_valid_play):
+    ''' returns a list of all valid plays that can be made from a hand given
+    some play state variables. '''
+    output = []
+    for card in hand:
+        if (is_valid(played, hand, card, broken)):
+            output.append(card)
+    return output
+
+def score_game(tricks_won):
+    ''' scores each players list of tricks won and returns a tuple of players
+    scores and a boolean regarding their winning status in a list, in order
+    of the original ordering of lists in tricks_won. players may draw. '''
+    
+    scores = []
+    # construct a list of final scores for each player
+    for tricklist in tricks_won:
+        score = 0
+        for trick in tricklist:
+            score += score_trick(trick)
+
+        # did the player 'shoot the moon' (score = 26 or 36 (from 0D))?
+        # if so, make them win. This score is a mutually exclusive outcome, so
+        # there can now be only one winner.
+        # probably not the 'right' way to calculate it
+
+        if score == 16: # final score 16 if captured 0D as well (26 - 10)
+            score = -36 # wew, magic numbers (-26 moon shoot + -10 for 0D)
+        if score == 26: 
+            score *= -1 # turn that frown upside down!
+        scores.append(score)
+
+    # modify the list so that each element is now a tuple of (score, Bool)
+    # where Boolean True represents _a_ winning player (i.e. is equal to the
+    # minumum score.
+    return [(score,(lambda x: x == min(scores))(score)) for score in scores]
+
+def score_trick(trick):
+    ''' scores a trick based on the rules set out in the spec.
+            Hearts: +1 point
+            Q of S: +13 points
+            0 of D: -10 points
+    '''
+    score = 0 # should init to 0 on first increment, but be explicit
+    score += len(filter(f_suit('H'),trick))     # number of hearts in trick
+    score +=  13 * ('QS' in trick)   # Queen of Spades
+    score += -10 * ('0D' in trick)   # 10 of Diamonds
+    return score
