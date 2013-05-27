@@ -29,7 +29,6 @@ def f_suit(suit):
     if suit in __SUITS__:
         return lambda card: card[1] == suit
 
-
 def cards_to_suit(cards, sorted = True):
     ''' takes a list of cards, returns an optionally sorted dict of lists of
     each suit of cards (in rank order) '''
@@ -73,12 +72,38 @@ def is_penalty(card):
         return True
     return false
 
+def card_gen(stop_card):
+    ''' Just learnt what yield does, so here's a generator function to
+    generate cards from the bottom of a suit up until a stop card. 
+    useful when generating runs of cards in a list:
+    [card for card in card_gen(stop_card)]
+    it's super messy.
+    '''
+    
+    suit = stop_card[1]
+    stop_rank = stop_card[0]
+    if stop_rank not in __RANKS__ or suit not in __SUITS__: # invalid end point
+        return
+    cards = map(''.join, itertools.product(__RANKS__,suit)) # generator source
+    cards.sort(key = lambda x: __RANK_ORDER__.index(x[0])) # sorted (2..ace)
+    count = 0
+    card = cards[0] # first card in source
+    while True:
+        yield card
+        card = cards[count]
+        count += 1
+        if card == (stop_card): # include the stop card in generator
+            yield stop_card
+            break
+
 
 #playing QS breaks hearts, QS treated like a heart
 
 # filter functions for H,D,C,S etc
 # have_suit() function
 # ducking function (highest card that doesn't win, but isn't 0D)
+
+
 def pass_cards(hand):
     ''' Pases a 3, hopefully advantageous cards at the beginning of the round.
     Prioritises passing QKA of Spades, then the QS or 0D then if possible,
@@ -239,3 +264,49 @@ def score_trick(trick):
     score +=  13 * ('QS' in trick)   # Queen of Spades
     score += -10 * ('0D' in trick)   # 10 of Diamonds
     return score
+
+
+def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
+    valid_plays=get_valid_plays, score=score_game):
+
+    def get_round_no():
+        ''' returns the current round of play based on tricks won '''
+        return sum([len(tricklist) for tricklist in tricks_won])
+
+    def can_follow():
+        ''' returns a boolean status of the player being able 
+        to follow suit'''
+        if not len(filter(f_suit(lead_suit), get_valid_plays())):
+            return False
+        return True
+
+    round_no = get_round_no()
+    lead_suit = played[0][1] # suit that is currently leading
+    #mylead = # some truth value
+
+    valid_plays = get_valid_plays() # if there is only one move, make it
+    if len(valid_plays) == 1:
+        return valid_plays
+
+    if '0D' in played: # if the 0D has been played, try to capture it
+        # try each card in Diamonds above 0D, highest first
+        for card in [x for x in card_gen('AD')][:-5:-1]:
+            if card in valid_plays:
+                return card
+
+    if 'QS' in played: # panic!
+        # try to play highest card under queen
+        for card in [x for x in card_gen('JS')][::-1]:
+            if card in valid_plays:
+                return card
+
+    # try play the highest card that's valid if it's not dangerous (can't follow
+    #    or hearts not broken)
+    if can_follow() or not hearts:
+        # 
+    # try play the 'shortest' suit that is a valid play if it's 'dangerous'
+
+    #if round_no == 0:
+        #play highest spade if possible, else play any damned card
+        #valid_plays[]
+    return
