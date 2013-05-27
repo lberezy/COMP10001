@@ -29,7 +29,7 @@ def f_suit(suit):
     if suit in __SUITS__:
         return lambda card: card[1] == suit
 
-def cards_to_suit(cards, sorted = True):
+def cards_to_suit(cards, sort = True):
     ''' takes a list of cards, returns an optionally sorted dict of lists of
     each suit of cards (in rank order) '''
 
@@ -37,10 +37,9 @@ def cards_to_suit(cards, sorted = True):
     # create dictionary with 
     for suit in __SUITS__:
         suits[suit] = [card for card in cards if f_suit(suit)(card)]
-    if sorted:
-        for suit in output:
-            output[suit].sort(key = lambda x: __RANK_ORDER__.index(x[0]))
-    return output
+        if sort:
+            suits[suit].sort(key = lambda x: __RANK_ORDER__.index(x[0]))
+    return suits
 
 def have_suit(hand, suit):
     ''' checks to see if suit is in hand '''
@@ -104,6 +103,8 @@ def card_gen(stop_card):
 # ducking function (highest card that doesn't win, but isn't 0D)
 
 
+###############################################################################
+
 def pass_cards(hand):
     ''' Pases a 3, hopefully advantageous cards at the beginning of the round.
     Prioritises passing QKA of Spades, then the QS or 0D then if possible,
@@ -131,18 +132,13 @@ def pass_cards(hand):
     ##hand = cards_to_suit(hand) # sort into list of suits
 
     # Remove A,K,Q of Spades first
-    # don't really need to filter, but those functions were just sitting around
-    if 'AS' in filter(f_spades, hand) and len(to_pass) < 3:
-        # pop the card from the hand into the to_pass list
-        pick('AS')
-    if 'KS' in filter(f_spades, hand) and len(to_pass) < 3:
-        pick('KS')
-    if 'QS' in filter(f_spades, hand) and len(to_pass) < 3:
-        pick('QS')
+    for card in ['AS','KS','QS']:
+        if card in filter(f_suit('S'), hand) and len(to_pass) < 3:
+            pick(card)
 
     # it's hard to capture this card when in hand, so give away unless you 
     # don't have a card to capture it with (A,K,Q,J of Diamonds)
-    if '0D' in filter(f_diamonds, hand) \
+    if '0D' in filter(f_suit('D'), hand) \
         and have_any_cards(['AD','KD','QD']) and len(to_pass) < 3:
         pick('0D')
         # set a flag so we know not to give these away later
@@ -150,9 +146,7 @@ def pass_cards(hand):
 
     # sort remaining suits by size
 ### BUG HERE
-    sorted_suits = sorted([(len(x),x) for x in cards_to_suit(hand)])
-    print sorted_suits
-    sorted_suits = [x[1] for x in sorted_suits]
+    sorted_suits = sorted([x for x in cards_to_suit(hand)], key = len)
     print sorted_suits
     # pick off smallest suits that will fit entirely
 
@@ -273,8 +267,8 @@ def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
         ''' returns the current round of play based on tricks won '''
         return sum([len(tricklist) for tricklist in tricks_won])
 
-    def can_follow():
-        ''' returns a boolean status of the player being able 
+    def must_follow():
+        ''' returns a boolean status of the player being required 
         to follow suit'''
         if not len(filter(f_suit(lead_suit), get_valid_plays())):
             return False
@@ -302,7 +296,7 @@ def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
 
     # try play the highest card that's valid if it's not dangerous (can't follow
     #    or hearts not broken)
-    if can_follow() or not hearts:
+    #if not must_follow() or not hearts:
         # 
     # try play the 'shortest' suit that is a valid play if it's 'dangerous'
 
