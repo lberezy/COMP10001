@@ -4,9 +4,11 @@
 #   Hearts card game 'AI'.
 # I've never played Hearts before this, and it's still a little confusing to me
 # which means you get to laugh extra hard at some of the plays the AI may make.
+# enjoy
 
 
 import itertools 
+from random import choice   # uh oh
 
 # construct some card set constants, might come in handy and set gymnastics is
 # fun.
@@ -90,7 +92,6 @@ def card_gen(stop_card):
     cards = map(''.join, itertools.product(RANKS,suit)) # generator source
     # can't use card_sort() as sort needs to be in-place and lazy
     cards.sort(key = lambda x: RANK_ORDER.index(x[0])) # sorted (2..ace)
-    print cards
     count = 0
     while True:
         card = cards[count]
@@ -262,34 +263,58 @@ def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
     def must_follow():
         ''' returns a boolean status of the player being required 
         to follow suit'''
-        if not len(filter(f_suit(lead_suit), get_valid_plays())):
-            return False
-        return True
+        # if any lead_suit cards in valid_plays, then player must follow
+        lead_suit = played[0][1] # leading suit
+        if len(filter(f_suit(lead_suit),\
+                get_valid_plays(played, hand, broken, is_valid))):
+            return True
+        return False
 
+    def get_danger():
+        ''' returns a boolean if there are any penalty cards in the current
+        playing trick '''
+        if filter(f_suit('H'), played) or 'QS' in played:
+            return True
+        return False
+
+    ### state-ish variables
     round_no = get_round_no()
-    print round_no
+    danger = get_danger()
     if len(played):
-        print played
         lead_suit = played[0][1] # suit that is currently leading
-    #mylead = # some truth value
-
     valid_plays = get_valid_plays(played, hand, broken, is_valid)
 
+
+    ### play 'logic'
     # if there is only one move, make it
     if len(valid_plays) == 1:
         return valid_plays[0]   # return string not list
 
-    if '0D' in played: # if the 0D has been played, try to capture it
+    # discard highest possible on opening
+    if round_no == 0:   
+        try:
+            # grab highest value valid card and get rid of it
+            return card_sort(valid_plays, rev = True)[0]
+        except:
+            pass
+    
+    # if the 0D has been played, try to capture it
+    if '0D' in played:
         # try each card in Diamonds above 0D, highest first
+        # probably would be better to do: ['JD','QD','KD','AD']
         for card in [x for x in card_gen('AD')][:-5:-1]:
             if card in valid_plays:
                 return card  # return string, not list
 
+    # if QS played, try not to win the trick
     if 'QS' in played: # panic!
-        # try to play highest card under queen
+        # try card in Spades < QS, highest to lowest
         for card in [x for x in card_gen('JS')][::-1]:
             if card in valid_plays:
                 return card  # return string, not list
+    if not must_follow() and not hearts:
+            # grab highest value valid card and get rid of it
+            return card_sort(valid_plays, rev = True)[0]
 
     # try play the highest card that's valid if it's not dangerous (can't follow
     #    or hearts not broken)
@@ -297,9 +322,7 @@ def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
         # 
     # try play the 'shortest' suit that is a valid play if it's 'dangerous'
 
-    #if round_no == 0:
-        #play highest spade if possible, else play any damned card
-        #valid_plays[]
-
     ### 0/10 move ###
-    return valid_plays[0] # if all else fails, return the first viable card
+    # if all else fails, return random valid card
+    # BELIEVE IN THE HEART OF THE CARDS!
+    return choice(valid_plays)
