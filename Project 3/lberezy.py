@@ -62,7 +62,7 @@ def have_penalty(hand):
     
     if 'QS' in hand:
         return True
-    if len(filter(f_hearts, hand)):
+    if len(filter(f_suit('H', hand))):
         return True
     return False
 
@@ -86,13 +86,11 @@ def card_gen(stop_card):
     cards = map(''.join, itertools.product(__RANKS__,suit)) # generator source
     cards.sort(key = lambda x: __RANK_ORDER__.index(x[0])) # sorted (2..ace)
     count = 0
-    card = cards[0] # first card in source
     while True:
-        yield card
         card = cards[count]
+        yield card
         count += 1
         if card == (stop_card): # include the stop card in generator
-            yield stop_card
             break
 
 
@@ -112,7 +110,7 @@ def pass_cards(hand):
 
     def pick(card):
         ''' removes card from hand and places it in picked list '''
-        to_pass.append(hand[card[1]].pop(hand[card[1]].index(card)))
+        to_pass.append(hand.pop(hand.index(card)))
 
 
     # Passes a hopefully advantageous list of 3 cards
@@ -146,19 +144,21 @@ def pass_cards(hand):
 
     # sort remaining suits by size
 ### BUG HERE
-    sorted_suits = sorted([x for x in cards_to_suit(hand)], key = len)
-    print sorted_suits
+
+    #sorted_suits = sorted([x for x in cards_to_suit(hand)], key = len)
     # pick off smallest suits that will fit entirely
 
     #WARNING: infinite loop
     #FIXME
-    for suit in sorted_suits:
+    sorted_suits = cards_to_suit(hand)
+    for suit in sorted_suits:    # dictionary of Suit: [Cards]
         # if the whole suit will fit in remaining pick
-        if len(suit) <= (3 - len(to_pass)):
-                print suit
-                [pick(card) for card in suit]
+        if len(sorted_suits[suit]) <= (3 - len(to_pass)):
+                for card in sorted_suits[suit]:
+                     pick(card)
+                    # pick card
 
-        # don't forget to check len(to_pass) == pass_size
+    assert(len(to_pass) == 3)
     return to_pass
 
 
@@ -179,16 +179,12 @@ def is_valid_play(played, hand, play, broken):
         # trying to lead penalty card when not broken and not forced to break
         if not broken and (play[1] == 'H' or play == 'QS') and \
          (have_suit(hand, 'D') or have_suit(hand, 'D')
-         or (filter(f_spades, hand) != ['QS'])):
+         or (filter(f_suit('S'), hand) != ['QS'])):
             return False
         return True
 
     lead_card = played[0]
 
-
-#NOT FINISHED
-#"         # must follow suit if card of that suit held" doesn't work
-#is_valid_play(['KH'], ['0D', '9S', '3S', '3D', '3H', '5D', 'AD', '6C', '7D', '6H', 'JH'],'JH',True)""",True
     # not following suit when following is possible
     if have_suit(hand, lead_card[1]) and play[1] != lead_card[1]:
         return False
@@ -211,11 +207,11 @@ def score_game(tricks_won):
     scores and a boolean regarding their winning status in a list, in order
     of the original ordering of lists in tricks_won. players may draw. '''
 
-    def shot_moon(tricks):
+    def shot_moon():
         ''' returns a boolean True if the player has captured every penalty
         card including the QS. '''
 
-        tricks = list(itertools.chain(tricks))  # flatten list of lists
+        tricks = list(itertools.chain.from_iterable(tricklist))  # flatten list of lists
         if len(filter(f_suit('H'),tricks)) == len(__RANK_ORDER__) \
             and ('QS' in tricks):
             return True
@@ -229,15 +225,12 @@ def score_game(tricks_won):
             score += score_trick(trick)
 
         # did the player 'shoot the moon' (score = 26 or 36 (from 0D))?
-        # if so, make them win. This score is a mutually exclusive outcome, so
-        # there can now be only one winner.
-        # probably not the 'right' way to calculate it
-            
-            # score == 16 if captured 0D as well (26 - 10)
-        if score == 16 and shot_moon(tricks):
+        # if so, make them win.
+
+        if score == 16 and shot_moon(): # (shot moon + 0D)
             # set the new score
             score = -36 # wew, magic numbers (-26 moon shoot + -10 for 0D)
-        if score == 26 and shot_moon(tricks): 
+        if score == 26 and shot_moon(): 
             score *= -1 # turn that frown upside down!
         scores.append(score)
 
@@ -278,21 +271,23 @@ def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
     lead_suit = played[0][1] # suit that is currently leading
     #mylead = # some truth value
 
-    valid_plays = get_valid_plays() # if there is only one move, make it
+    valid_plays = get_valid_plays(played, hand, broken, is_valid)
+
+    # if there is only one move, make it
     if len(valid_plays) == 1:
-        return valid_plays
+        return valid_plays[0]   # return string not list
 
     if '0D' in played: # if the 0D has been played, try to capture it
         # try each card in Diamonds above 0D, highest first
         for card in [x for x in card_gen('AD')][:-5:-1]:
             if card in valid_plays:
-                return card
+                return card[0]  # return string, not list
 
     if 'QS' in played: # panic!
         # try to play highest card under queen
         for card in [x for x in card_gen('JS')][::-1]:
             if card in valid_plays:
-                return card
+                return card[0]  # return string, not list
 
     # try play the highest card that's valid if it's not dangerous (can't follow
     #    or hearts not broken)
