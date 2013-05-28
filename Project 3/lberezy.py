@@ -10,13 +10,13 @@ import itertools
 
 # construct some card set constants, might come in handy and set gymnastics is
 # fun.
-__SUITS__   = set(['H','D','C','S']) # hearts, diamonds, clubs, spades
-__NUMBERS__ = set([str(i) for i in range(2, 10)]).union(set(['0']))
-__ROYALS__  = set(['J','Q','K','A'])
-__RANKS__   = __NUMBERS__.union(__ROYALS__)
-__RANK_ORDER__ = \
+SUITS   = set(['H','D','C','S']) # hearts, diamonds, clubs, spades
+NUMBERS = set([str(i) for i in range(2, 10)]).union(set(['0']))
+ROYALS  = set(['J','Q','K','A'])
+RANKS   = NUMBERS.union(ROYALS)
+RANK_ORDER = \
     ['2', '3', '4', '5', '6', '7', '8', '9', '0', 'J', 'Q', 'K', 'A']
-__ALLCARDS__ = map(''.join, itertools.product(__RANKS__,__SUITS__))
+ALL_CARDS = map(''.join, itertools.product(RANKS,SUITS))
 
 
 # filter functions, to make life easier... maybe. I wrote these before thinking
@@ -26,7 +26,7 @@ def f_suit(suit):
     ''' returns an appropriate filter function based on the suit. For use
     in filter()., otherwise returns None '''
 
-    if suit in __SUITS__:
+    if suit in SUITS:
         return lambda card: card[1] == suit
 
 def cards_to_suit(cards, sort = True):
@@ -34,12 +34,16 @@ def cards_to_suit(cards, sort = True):
     each suit of cards (in rank order) '''
 
     suits = {}
-    # create dictionary with 
-    for suit in __SUITS__:
+    # create dictionary with {suit: [cards]}
+    for suit in SUITS:
         suits[suit] = [card for card in cards if f_suit(suit)(card)]
         if sort:
-            suits[suit].sort(key = lambda x: __RANK_ORDER__.index(x[0]))
+            card_sort(suits[suit])
     return suits
+
+def card_sort(cards, rev=False):
+    '''sorts a list of cards in rank order'''
+    return sorted(cards, key=lambda x: RANK_ORDER.index(x[0]), reverse=rev)
 
 def have_suit(hand, suit):
     ''' checks to see if suit is in hand '''
@@ -81,10 +85,12 @@ def card_gen(stop_card):
     
     suit = stop_card[1]
     stop_rank = stop_card[0]
-    if stop_rank not in __RANKS__ or suit not in __SUITS__: # invalid end point
+    if stop_rank not in RANKS or suit not in SUITS: # invalid end point
         return
-    cards = map(''.join, itertools.product(__RANKS__,suit)) # generator source
-    cards.sort(key = lambda x: __RANK_ORDER__.index(x[0])) # sorted (2..ace)
+    cards = map(''.join, itertools.product(RANKS,suit)) # generator source
+    # can't use card_sort() as sort needs to be in-place and lazy
+    cards.sort(key = lambda x: RANK_ORDER.index(x[0])) # sorted (2..ace)
+    print cards
     count = 0
     while True:
         card = cards[count]
@@ -92,14 +98,6 @@ def card_gen(stop_card):
         count += 1
         if card == (stop_card): # include the stop card in generator
             break
-
-
-#playing QS breaks hearts, QS treated like a heart
-
-# filter functions for H,D,C,S etc
-# have_suit() function
-# ducking function (highest card that doesn't win, but isn't 0D)
-
 
 ###############################################################################
 
@@ -137,28 +135,27 @@ def pass_cards(hand):
     # it's hard to capture this card when in hand, so give away unless you 
     # don't have a card to capture it with (A,K,Q,J of Diamonds)
     if '0D' in filter(f_suit('D'), hand) \
-        and have_any_cards(['AD','KD','QD']) and len(to_pass) < 3:
+        and have_any_cards(['AD','KD','QD'], hand) and len(to_pass) < 3:
         pick('0D')
         # set a flag so we know not to give these away later
         keep_high_diamonds = True
 
     # sort remaining suits by size
-### BUG HERE
+    # dictionary of {suit: [cards]}
+    suit_dict = cards_to_suit(hand)
+    # form a list of suits in order of how many cards each contains
+    sorted_suits = sorted(suit_dict.keys(), key = lambda  x: len(suit_dict[x]))
 
-    #sorted_suits = sorted([x for x in cards_to_suit(hand)], key = len)
-    # pick off smallest suits that will fit entirely
+    # attempt to go void, from shortest suit to longest suit
+    for suit in sorted_suits:    # dictionary of {suit: [cards]}
+            # try and take highest cards first
+            for card in card_sort(suit_dict[suit], rev = True):
+                if len(to_pass) < 3:
+                    pick(card)
+                else:
+                    return to_pass
 
-    #WARNING: infinite loop
-    #FIXME
-    sorted_suits = cards_to_suit(hand)
-    for suit in sorted_suits:    # dictionary of Suit: [Cards]
-        # if the whole suit will fit in remaining pick
-        if len(sorted_suits[suit]) <= (3 - len(to_pass)):
-                for card in sorted_suits[suit]:
-                     pick(card)
-                    # pick card
-
-    assert(len(to_pass) == 3)
+    #assert(len(to_pass) == 3)
     return to_pass
 
 
@@ -173,8 +170,7 @@ def is_valid_play(played, hand, play, broken):
     if not play:    # must play something
         return False
 
-# leading
-# can lead anything 
+    # leading 
     if played == []:
         # trying to lead penalty card when not broken and not forced to break
         if not broken and (play[1] == 'H' or play == 'QS') and \
@@ -183,11 +179,14 @@ def is_valid_play(played, hand, play, broken):
             return False
         return True
 
-    lead_card = played[0]
+    # otherwise...
 
+    lead_card = played[0]
     # not following suit when following is possible
+    # if you are trying to play off suit, but can follow suit, don't allow it
     if have_suit(hand, lead_card[1]) and play[1] != lead_card[1]:
         return False
+    # at this point, anything else is a valid move (I hope)
     return True
 
 
@@ -212,7 +211,7 @@ def score_game(tricks_won):
         card including the QS. '''
 
         tricks = list(itertools.chain.from_iterable(tricklist))  # flatten list of lists
-        if len(filter(f_suit('H'),tricks)) == len(__RANK_ORDER__) \
+        if len(filter(f_suit('H'),tricks)) == len(RANK_ORDER) \
             and ('QS' in tricks):
             return True
         return False
@@ -268,7 +267,10 @@ def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
         return True
 
     round_no = get_round_no()
-    lead_suit = played[0][1] # suit that is currently leading
+    print round_no
+    if len(played):
+        print played
+        lead_suit = played[0][1] # suit that is currently leading
     #mylead = # some truth value
 
     valid_plays = get_valid_plays(played, hand, broken, is_valid)
@@ -281,13 +283,13 @@ def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
         # try each card in Diamonds above 0D, highest first
         for card in [x for x in card_gen('AD')][:-5:-1]:
             if card in valid_plays:
-                return card[0]  # return string, not list
+                return card  # return string, not list
 
     if 'QS' in played: # panic!
         # try to play highest card under queen
         for card in [x for x in card_gen('JS')][::-1]:
             if card in valid_plays:
-                return card[0]  # return string, not list
+                return card  # return string, not list
 
     # try play the highest card that's valid if it's not dangerous (can't follow
     #    or hearts not broken)
@@ -298,4 +300,6 @@ def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
     #if round_no == 0:
         #play highest spade if possible, else play any damned card
         #valid_plays[]
-    return
+
+    ### 0/10 move ###
+    return valid_plays[0] # if all else fails, return the first viable card
