@@ -1,28 +1,29 @@
-# Project 3 - COMP10001
-# Author: Lucas Berezy
-#
-#   Hearts card game 'AI'.
-# I've never played Hearts before this, and it's still a little confusing to me
-# which means you get to laugh extra hard at some of the plays the AI may make.
-# enjoy
+'''
+Project 3 - COMP10001
+Author: Lucas Berezy
+  Hearts card game 'AI'.
 
 
-import itertools 
-from random import choice   # uh oh
+I've never played Hearts before this, and it's still a little confusing to me
+which means you get to laugh extra hard at some of the plays the AI may make.
+enjoy.
+'''
+
+
+import itertools
+from random import choice, gauss
+from math import floor
 
 # construct some card set constants, might come in handy and set gymnastics is
 # fun.
-SUITS   = set(['H','D','C','S']) # hearts, diamonds, clubs, spades
+SUITS = set(['H', 'D', 'C', 'S'])  # hearts, diamonds, clubs, spades
 NUMBERS = set([str(i) for i in range(2, 10)]).union(set(['0']))
-ROYALS  = set(['J','Q','K','A'])
-RANKS   = NUMBERS.union(ROYALS)
+ROYALS = set(['J', 'Q', 'K', 'A'])
+RANKS = NUMBERS.union(ROYALS)
 RANK_ORDER = \
     ['2', '3', '4', '5', '6', '7', '8', '9', '0', 'J', 'Q', 'K', 'A']
-ALL_CARDS = map(''.join, itertools.product(RANKS,SUITS))
+ALL_CARDS = map(''.join, itertools.product(RANKS, SUITS))
 
-
-# filter functions, to make life easier... maybe. I wrote these before thinking
-# what i'd actually use them for.
 
 def f_suit(suit):
     ''' returns an appropriate filter function based on the suit. For use
@@ -31,7 +32,8 @@ def f_suit(suit):
     if suit in SUITS:
         return lambda card: card[1] == suit
 
-def cards_to_suit(cards, sort = True):
+
+def cards_to_suit(cards, sort=True):
     ''' takes a list of cards, returns an optionally sorted dict of lists of
     each suit of cards (in rank order) '''
 
@@ -43,9 +45,11 @@ def cards_to_suit(cards, sort = True):
             card_sort(suits[suit])
     return suits
 
+
 def card_sort(cards, rev=False):
     '''sorts a list of cards in rank order'''
     return sorted(cards, key=lambda x: RANK_ORDER.index(x[0]), reverse=rev)
+
 
 def have_suit(hand, suit):
     ''' checks to see if suit is in hand '''
@@ -54,53 +58,57 @@ def have_suit(hand, suit):
         return True
     return False
 
+
 def have_any_cards(cards, hand):
     ''' Returns true if any card in list of cards is in hand '''
 
-    assert type(cards)==list
+    assert isinstance(cards, list)
     for card in cards:
         if card in hand:
             return True
     return False
 
+
 def have_penalty(hand):
     ''' Returns true iff there is a Heart or QS in hand '''
-    
+
     if 'QS' in hand:
         return True
     if len(filter(f_suit('H', hand))):
         return True
     return False
 
+
 def is_penalty(card):
+    ''' determines if a card is a penalty card '''
     if card == 'QS' or card[1] == 'H':
         return True
-    return false
+    return False
+
 
 def card_gen(stop_card):
     ''' Just learnt what yield does, so here's a generator function to
-    generate cards from the bottom of a suit up until a stop card. 
+    generate cards from the bottom of a suit up until a stop card.
     useful when generating runs of cards in a list:
     [card for card in card_gen(stop_card)]
     it's super messy.
     '''
-    
+
     suit = stop_card[1]
     stop_rank = stop_card[0]
-    if stop_rank not in RANKS or suit not in SUITS: # invalid end point
+    if stop_rank not in RANKS or suit not in SUITS:  # invalid end point
         return
-    cards = map(''.join, itertools.product(RANKS,suit)) # generator source
+    cards = map(''.join, itertools.product(RANKS, suit))  # generator source
     # can't use card_sort() as sort needs to be in-place and lazy
-    cards.sort(key = lambda x: RANK_ORDER.index(x[0])) # sorted (2..ace)
+    cards.sort(key=lambda x: RANK_ORDER.index(x[0]))  # sorted (2..ace)
     count = 0
     while True:
         card = cards[count]
         yield card
         count += 1
-        if card == (stop_card): # include the stop card in generator
+        if card == (stop_card):  # include the stop card in generator
             break
 
-###############################################################################
 
 def pass_cards(hand):
     ''' Pases a 3, hopefully advantageous cards at the beginning of the round.
@@ -110,7 +118,6 @@ def pass_cards(hand):
     def pick(card):
         ''' removes card from hand and places it in picked list '''
         to_pass.append(hand.pop(hand.index(card)))
-
 
     # Passes a hopefully advantageous list of 3 cards
     # from the dealt hand of cards
@@ -122,21 +129,21 @@ def pass_cards(hand):
     #   Try and go void in the shortest suit that's not hearts, starting with
     #   the highest cards (that aren't A,K,Q of Diamonds if 0D was passed)
     #   Avoid passing low spades
-
     # seriously avoid passing low spades
 
-    to_pass = [] # 3 cards to pass
-    ##hand = cards_to_suit(hand) # sort into list of suits
+    to_pass = []  # 3 cards to pass
+    high_diamonds = ['AD', 'KD', 'QD']
+    keep_high_diamonds = False
 
     # Remove A,K,Q of Spades first
-    for card in ['AS','KS','QS']:
+    for card in ['AS', 'KS', 'QS']:
         if card in filter(f_suit('S'), hand) and len(to_pass) < 3:
             pick(card)
 
-    # it's hard to capture this card when in hand, so give away unless you 
+    # it's hard to capture this card when in hand, so give away unless you
     # don't have a card to capture it with (A,K,Q,J of Diamonds)
     if '0D' in filter(f_suit('D'), hand) \
-        and have_any_cards(['AD','KD','QD'], hand) and len(to_pass) < 3:
+            and have_any_cards(high_diamonds, hand) and len(to_pass) < 3:
         pick('0D')
         # set a flag so we know not to give these away later
         keep_high_diamonds = True
@@ -145,20 +152,22 @@ def pass_cards(hand):
     # dictionary of {suit: [cards]}
     suit_dict = cards_to_suit(hand)
     # form a list of suits in order of how many cards each contains
-    sorted_suits = sorted(suit_dict.keys(), key = lambda  x: len(suit_dict[x]))
+    sorted_suits = sorted(suit_dict.keys(), key=lambda x: len(suit_dict[x]))
 
     # attempt to go void, from shortest suit to longest suit
     for suit in sorted_suits:    # dictionary of {suit: [cards]}
-            # try and take highest cards first
-            for card in card_sort(suit_dict[suit], rev = True):
-                if len(to_pass) < 3:
-                    pick(card)
+        # try and take highest cards first
+        for card in card_sort(suit_dict[suit], rev=True):
+            if len(to_pass) < 3:
+                if keep_high_diamonds and card in high_diamonds:
+                    continue
                 else:
-                    return to_pass
+                    pick(card)
+            else:
+                return to_pass
 
-    #assert(len(to_pass) == 3)
+    # assert(len(to_pass) == 3)
     return to_pass
-
 
 
 def is_valid_play(played, hand, play, broken):
@@ -171,12 +180,12 @@ def is_valid_play(played, hand, play, broken):
     if not play:    # must play something
         return False
 
-    # leading 
+    # leading
     if played == []:
         # trying to lead penalty card when not broken and not forced to break
         if not broken and (play[1] == 'H' or play == 'QS') and \
-         (have_suit(hand, 'D') or have_suit(hand, 'D')
-         or (filter(f_suit('S'), hand) != ['QS'])):
+            (have_suit(hand, 'D') or have_suit(hand, 'D')
+             or (filter(f_suit('S'), hand) != ['QS'])):
             return False
         return True
 
@@ -211,9 +220,11 @@ def score_game(tricks_won):
         ''' returns a boolean True if the player has captured every penalty
         card including the QS. '''
 
-        tricks = list(itertools.chain.from_iterable(tricklist))  # flatten list of lists
-        if len(filter(f_suit('H'),tricks)) == len(RANK_ORDER) \
-            and ('QS' in tricks):
+        # flatten list of lists
+        tricks = list(itertools.chain.from_iterable(tricklist))
+        # have all the penalty cards?
+        if len(filter(f_suit('H'), tricks)) == len(RANK_ORDER) \
+                and ('QS' in tricks):
             return True
         return False
 
@@ -224,20 +235,20 @@ def score_game(tricks_won):
         for trick in tricklist:
             score += score_trick(trick)
 
-        # did the player 'shoot the moon' (score = 26 or 36 (from 0D))?
+        # did the player 'shoot the moon' (score = 26 or 16 (from 0D))?
         # if so, make them win.
-
-        if score == 16 and shot_moon(): # (shot moon + 0D)
+        # and the award for worst player goes to...
+        if score == 16 and shot_moon():  # (shot moon + 0D == 16)
             # set the new score
-            score = -36 # wew, magic numbers (-26 moon shoot + -10 for 0D)
-        if score == 26 and shot_moon(): 
-            score *= -1 # turn that frown upside down!
+            score = -36  # wew, magic numbers (-26 moon shoot + -10 for 0D)
+        if score == 26 and shot_moon():
+            score *= -1  # turn that frown upside down!
         scores.append(score)
 
-    # modify the list so that each element is now a tuple of (score, Bool)
+    # decorate the list so that each element is now a tuple of (score, Bool)
     # where Boolean True represents _a_ winning player (i.e. is equal to the
-    # minumum score.
-    return [(score,(lambda x: x == min(scores))(score)) for score in scores]
+    # minumum score. (can be multiple winners)
+    return [(score, (lambda x: x == min(scores))(score)) for score in scores]
 
 
 def score_trick(trick):
@@ -246,27 +257,35 @@ def score_trick(trick):
             Q of S: +13 points
             0 of D: -10 points
     '''
-    score = 0 # should init to 0 on first increment, but be explicit
-    score += len(filter(f_suit('H'),trick))     # number of hearts in trick
-    score +=  13 * ('QS' in trick)   # Queen of Spades
+    score = 0
+    score += len(filter(f_suit('H'), trick))    # number of hearts in trick
+    score += 13 * ('QS' in trick)   # Queen of Spades
     score += -10 * ('0D' in trick)   # 10 of Diamonds
     return score
 
 
-def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
-    valid_plays=get_valid_plays, score=score_game):
+def play(tricks_won, played, hand, broken, is_valid=is_valid_play,
+         valid_plays=get_valid_plays, score=score_game):
+    ''' plays a valid card in a round of hearts according to the following
+    ruleset:
+
+
+    appologies for the large amount of return branching.
+    '''
 
     def get_round_no():
         ''' returns the current round of play based on tricks won '''
         return sum([len(tricklist) for tricklist in tricks_won])
 
     def must_follow():
-        ''' returns a boolean status of the player being required 
+        ''' returns a boolean status of the player being required
         to follow suit'''
         # if any lead_suit cards in valid_plays, then player must follow
-        lead_suit = played[0][1] # leading suit
-        if len(filter(f_suit(lead_suit),\
-                get_valid_plays(played, hand, broken, is_valid))):
+        if not len(played):  # no following if it's your lead
+            return False
+        lead_suit = played[0][1]  # leading suit
+        if len(filter(f_suit(lead_suit),
+                      get_valid_plays(played, hand, broken, is_valid))):
             return True
         return False
 
@@ -277,27 +296,27 @@ def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
             return True
         return False
 
-    ### state-ish variables
+    # state-ish variables
     round_no = get_round_no()
     danger = get_danger()
+    lead_suit = ''
     if len(played):
-        lead_suit = played[0][1] # suit that is currently leading
+        lead_suit = played[0][1]  # suit that is currently leading
     valid_plays = get_valid_plays(played, hand, broken, is_valid)
 
-
-    ### play 'logic'
+    # play 'logic'
     # if there is only one move, make it
     if len(valid_plays) == 1:
         return valid_plays[0]   # return string not list
 
     # discard highest possible on opening
-    if round_no == 0:   
+    if round_no == 0:
         try:
             # grab highest value valid card and get rid of it
-            return card_sort(valid_plays, rev = True)[0]
+            return card_sort(valid_plays, rev=True)[0]
         except:
             pass
-    
+
     # if the 0D has been played, try to capture it
     if '0D' in played:
         # try each card in Diamonds above 0D, highest first
@@ -307,22 +326,120 @@ def play(tricks_won, played, hand, broken, is_valid=is_valid_play, \
                 return card  # return string, not list
 
     # if QS played, try not to win the trick
-    if 'QS' in played: # panic!
+    if 'QS' in played:  # panic!
         # try card in Spades < QS, highest to lowest
-        for card in [x for x in card_gen('JS')][::-1]:
+        for card in reversed([x for x in card_gen('JS')]):
             if card in valid_plays:
                 return card  # return string, not list
-    if not must_follow() and not hearts:
-            # grab highest value valid card and get rid of it
-            return card_sort(valid_plays, rev = True)[0]
 
-    # try play the highest card that's valid if it's not dangerous (can't follow
-    #    or hearts not broken)
-    #if not must_follow() or not hearts:
-        # 
+    if not must_follow() and not broken and len(played):
+        # grab highest value valid card and get rid of it
+        exclude = set(filter(f_suit(lead_suit), valid_plays))
+        to_play = [card for card in valid_plays if card not in exclude]
+        return card_sort(to_play, rev=True)[0]
+
+    if lead_suit == 'S' and not danger:
+        return card_sort(valid_plays, rev=True)[0]
+
+    # if suit is Spades and QS has been played and not dangerous to play,
+    # follow with highest spade
+
+    # try play the highest card that's valid if it's not dangerous
+    #(can't follow or hearts not broken)
+    # if not must_follow() or not hearts:
+        #
     # try play the 'shortest' suit that is a valid play if it's 'dangerous'
-
-    ### 0/10 move ###
+# player trys to win too many tricks
+    # 0/10 move ###
     # if all else fails, return random valid card
     # BELIEVE IN THE HEART OF THE CARDS!
     return choice(valid_plays)
+
+
+def predict_score(hand):
+    ''' takes a playing hand at the start of the game (after passing) and
+    attempts to predict the final score based on this information alone via
+    the (poor) construction of a Gaussian distribution.
+
+    Ideally it would be nice to gather some statistical data on how this
+    'player' (among others) scores based on different hands, then map the
+    likeness of a given hand onto this distribution. It would be wrong to
+    cause excessive load scraping the online test playground however.
+
+    Assumptions: If holding QS, then median score is likely to be higher.
+    The closer the player is to holding a full-hand of hearts (idk, but it
+    sounds like a dangerous position to be in), the higher the score. Score is
+    also likely to be higher if player holds 0D and no higher
+    diamonds to capture with. If the player does have higher diamonds, the
+    median score will be shifted toward 0 by the number of these cards.
+    Score is likely to be toward 0 if starting with a hand that is void in
+    1 or more suits as it offers more opportunity for safe disposals.
+    If the average card in the hand has a low rank, then the score is likely
+    to be lower.'''
+
+    def clamp(score, s_min=-10, s_max=26):
+        if score >= s_max:     # max score
+            return s_max
+        elif score <= s_min:
+            return s_min
+        else:
+            return score
+
+    # warning: the following section is filled with made up pseudo-stastical
+    # numbers. I really wish they were magic in the 'helpful wizard' sense
+    # of the word, but they're more there to cause confusion. Sorry.
+
+    # some (un)educated guesses at possible initial score distributions
+    mu = 7  # mean initial score
+    sigma = 2  # standard deviation in score
+
+    hearts_count = len(filter(f_suit('H'), hand))
+    mu += 0.4 * hearts_count / len(hand)
+    sigma += hearts_count / 2
+
+    # compute average card rank of hand
+    hand_score = 0
+    for card in hand:
+        if card[0] in ROYALS:
+            hand_score += 12
+            mu += 1  # kind does something
+        else:
+            hand_score += int(card[0])
+    hand_score = float(hand_score) / len(hand)  # average
+    # adjust mu accordingly
+    mu += (hand_score - 10)    # yep, another made up number
+
+    # consider void suits
+    void_suits = 0
+    for suit in SUITS:
+        if (len(filter(f_suit(suit), hand)) == 0):
+            void_suits += 1
+
+    mu -= void_suits * 3  # more likely to have a score closer to zero
+
+    # consider Queen of Spades
+    if 'QS' in hand:
+        mu += (13 - mu)  # a guess at what the mean score might be closer to
+        sigma -= 0.5    # more likely to occur
+
+    # consider 10 of Diamonds, others are likely to win a trick here
+    # on second thought, this kind of doesn't make sense
+    if '0D' in hand:
+        higher_diamonds = len([x for x in filter(f_suit('D'), hand)
+                               if x in ['JD', 'QD', 'KD', 'AD']])
+        mu -= 2 * (0.4 * higher_diamonds)
+                   # makes it more unlikely to capture
+        sigma += 0.8
+
+    prediction = int(floor(gauss(mu, sigma)))    # compute integer score
+    prediction = clamp(prediction)  # clamp to [-10..26] range
+    if prediction in [26, 16]:  # may have possibly shot the moon
+        if prediction == 16:
+            if choice([0, 0, 1]):  # 1/3 chance of moon shoot
+                return -36
+            else:
+                return 16
+        else:
+            return -26
+    else:
+        return int(prediction)
