@@ -7,9 +7,6 @@
 I've never played Hearts before this, and it's still a little confusing to me
 which means you get to laugh extra hard at some of the plays the AI may make.
 enjoy.
-
-Also thanks for being an awesome tutor! 10/10, did recommend highly on
-subject experience survey.
 '''
 
 
